@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جاري التحويل...</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Tahoma, sans-serif;
+    background: #ffffff;
+    color: #333;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .loader {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #4285f4;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  h2 { font-size: 18px; font-weight: 500; margin-bottom: 8px; color: #555; }
+  p { font-size: 14px; color: #888; }
+</style>
+</head>
+<body>
+  <div class="loader"></div>
+  <h2>جاري تحويلك إلى الصفحة المطلوبة</h2>
+  <p>يرجى الانتظار...</p>
+
+  <script>
+    // ==================== إعداداتك ====================
+    const SHEET_URL = 'https://script.google.com/macros/s/AKfycbx8areIS5cbefogevXNPkwcu0H2nqg_HyvplPdpOc8qdm_CE2FE1oEsm3rsbTF4rU2Q/exec';
+    const REDIRECT_URL = 'https://dream2000.com/?fbclid=IwVERDUAT6agpwZG9mBWZkaWQWUNJXHsIlqtd91XENWhxqY6AkKEqGwmV4dG4DYWVtAjEwAHNydGMGYXBwX2lkCjY2Mjg1NjgzNzkAAR7zeI35G0-j1s1mqmeoWDFA1RgrPB7Kj4CoKX53-dRK-Vy5nxWIwH9YrWGl9Q_aem_03V6JcQzCBZm0Shykbj-Vg';
+    // ==================================================
+
+    const ua = navigator.userAgent;
+
+    function getOS() {
+      const m = ua.match(/OS\s([\d_]+)/);
+      if (/iphone|ipad|ipod/i.test(ua)) return m ? 'iOS ' + m[1].replace(/_/g, '.') : 'iOS (غير محدد)';
+      if (/android/i.test(ua)) return ua.match(/Android\s([\d.]+)/)?.[0] || 'Android';
+      if (/windows/i.test(ua)) return 'Windows';
+      if (/mac/i.test(ua)) return 'macOS';
+      return 'غير معروف';
+    }
+
+    function getBrowser() {
+      if (/CriOS/i.test(ua)) return 'Chrome (iOS)';
+      if (/safari/i.test(ua) && !/chrome/i.test(ua)) return 'Safari';
+      if (/chrome/i.test(ua)) return 'Chrome';
+      if (/firefox/i.test(ua)) return 'Firefox';
+      return 'غير معروف';
+    }
+
+    const payload = {
+      timestamp: new Date().toISOString(),
+      os: getOS(),
+      browser: getBrowser(),
+      userAgent: ua,
+      screen: screen.width + ' x ' + screen.height,
+      platform: navigator.platform || 'غير معروف',
+      language: navigator.language || 'غير معروف',
+      cores: navigator.hardwareConcurrency || 'غير معروف',
+      memory: navigator.deviceMemory || 'غير معروف',
+      referrer: document.referrer || 'مباشر'
+    };
+
+    // الطريقة المضمونة: x-www-form-urlencoded + no-cors
+    const encodedData = 'data=' + encodeURIComponent(JSON.stringify(payload));
+
+    // محاولة 1: fetch مع no-cors (مضمونة الإرسال، مفيش CORS blocking)
+    fetch(SHEET_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: encodedData,
+      mode: 'no-cors'
+    }).catch(() => {});
+
+    // محاولة 2: sendBeacon كـ fallback
+    try {
+      const blob = new Blob([encodedData], { type: 'application/x-www-form-urlencoded' });
+      navigator.sendBeacon(SHEET_URL, blob);
+    } catch (e) {}
+
+    // التحويل بعد 1.5 ثانية
+    setTimeout(() => {
+      window.location.href = REDIRECT_URL;
+    }, 1500);
+  </script>
+</body>
+</html>
