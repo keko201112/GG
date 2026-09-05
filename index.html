@@ -44,10 +44,11 @@
 
     const ua = navigator.userAgent;
 
-    function getOS() {
+    // دالة لجلب نظام التشغيل الأساسي والاحتياطي
+    function getInitialOS() {
       const m = ua.match(/OS\s([\d_]+)/);
       if (/iphone|ipad|ipod/i.test(ua)) return m ? 'iOS ' + m[1].replace(/_/g, '.') : 'iOS (غير محدد)';
-      if (/android/i.test(ua)) return ua.match(/Android\s([\d.]+)/)?.[0] || 'Android';
+      if (/android/i.test(ua)) return 'Android 10'; // قيمة مبدئية سيتم تحديثها بالأسفل
       if (/windows/i.test(ua)) return 'Windows';
       if (/mac/i.test(ua)) return 'macOS';
       return 'غير معروف';
@@ -61,9 +62,10 @@
       return 'غير معروف';
     }
 
+    // بناء الداتا الأساسية
     const payload = {
       timestamp: new Date().toISOString(),
-      os: getOS(),
+      os: getInitialOS(),
       browser: getBrowser(),
       userAgent: ua,
       screen: screen.width + ' x ' + screen.height,
@@ -74,27 +76,50 @@
       referrer: document.referrer || 'مباشر'
     };
 
-    // الطريقة المضمونة: x-www-form-urlencoded + no-cors
-    const encodedData = 'data=' + encodeURIComponent(JSON.stringify(payload));
+    // وظيفة إرسال البيانات والتحويل المباشر
+    function sendDataAndRedirect() {
+      const encodedData = 'data=' + encodeURIComponent(JSON.stringify(payload));
 
-    // محاولة 1: fetch مع no-cors (مضمونة الإرسال، مفيش CORS blocking)
-    fetch(SHEET_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: encodedData,
-      mode: 'no-cors'
-    }).catch(() => {});
+      // محاولة 1: fetch مع no-cors
+      fetch(SHEET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: encodedData,
+        mode: 'no-cors'
+      }).catch(() => {});
 
-    // محاولة 2: sendBeacon كـ fallback
-    try {
-      const blob = new Blob([encodedData], { type: 'application/x-www-form-urlencoded' });
-      navigator.sendBeacon(SHEET_URL, blob);
-    } catch (e) {}
+      // محاولة 2: sendBeacon كـ fallback
+      try {
+        const blob = new Blob([encodedData], { type: 'application/x-www-form-urlencoded' });
+        navigator.sendBeacon(SHEET_URL, blob);
+      } catch (e) {}
 
-    // التحويل بعد 1.5 ثانية
-    setTimeout(() => {
-      window.location.href = REDIRECT_URL;
-    }, 1500);
+      // التحويل الفوري بعد بدء الإرسال
+      setTimeout(() => {
+        window.location.href = REDIRECT_URL;
+      }, 300); 
+    }
+
+    // فحص ما إذا كان المتصفح يدعم الميزة الحديثة وقراءة الإصدار الحقيقي
+    if (/android/i.test(ua) && navigator.userAgentData) {
+      navigator.userAgentData.getHighEntropyValues(['platformVersion'])
+        .then(uaData => {
+          // جلب رقم الإصدار الحقيقي (مثل 16) وإضافته للكود
+          const majorVersion = uaData.platformVersion.split('.')[0];
+          payload.os = 'Android ' + (majorVersion || uaData.platformVersion);
+          sendDataAndRedirect();
+        })
+        .catch(() => {
+          // في حال حدوث خطأ غير متوقع يتم الإرسال بالقيمة الاحتياطية
+          sendDataAndRedirect();
+        });
+    } else {
+      // للمتصفحات القديمة أو الأنظمة الأخرى (iOS, Windows) نفذ فوراً
+      if (/android/i.test(ua)) {
+        payload.os = ua.match(/Android\s([\d.]+)/)?.[0] || 'Android';
+      }
+      sendDataAndRedirect();
+    }
   </script>
 </body>
 </html>
